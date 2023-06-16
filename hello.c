@@ -1,4 +1,9 @@
 int main() {
-  // 注释也应该被删掉哦啊啊啊
+  // aaaa
+  /* asadlkj 
+  asd jk
+  asd */
+
+  // aaaa
   return 100;
 }

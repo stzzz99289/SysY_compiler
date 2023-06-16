@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 #include <iostream>
-#include <fstream>
+#include <sstream>
 
 /*
 lv1 EBNF:
@@ -17,13 +17,15 @@ Stmt      ::= "return" Number ";";
 Number    ::= INT_CONST;
 */
 
+// TODO: change stream to cout
+
 // Base class for all ASTs
 class BaseAST {
     public:
         virtual ~BaseAST() = default;
 
         virtual void Dump() const = 0;
-        virtual void GenKoopa(std::ofstream &outfile) const = 0;
+        virtual void GenKoopa(std::stringstream &koopa_stream) const = 0;
 };
 
 // CompUnit AST
@@ -37,8 +39,8 @@ class CompUnitAST : public BaseAST {
             std::cout << " }";
         }
 
-        void GenKoopa(std::ofstream &outfile) const override {
-            func_def->GenKoopa(outfile);
+        void GenKoopa(std::stringstream &koopa_stream) const override {
+            func_def->GenKoopa(koopa_stream);
         }
 };
 
@@ -57,10 +59,10 @@ class FuncDefAST : public BaseAST {
             std::cout << " }";
         }
 
-        void GenKoopa(std::ofstream &outfile) const override {
-            outfile << "fun @" << ident << "(): ";
-            func_type->GenKoopa(outfile);
-            block->GenKoopa(outfile);
+        void GenKoopa(std::stringstream &koopa_stream) const override {
+            koopa_stream << "fun @" << ident << "(): ";
+            func_type->GenKoopa(koopa_stream);
+            block->GenKoopa(koopa_stream);
         }
 };
 
@@ -71,8 +73,8 @@ class FuncTypeAST : public BaseAST {
             std::cout << "FuncTypeAST { int }";
         }
 
-        void GenKoopa(std::ofstream &outfile) const override {
-            outfile << "i32";
+        void GenKoopa(std::stringstream &koopa_stream) const override {
+            koopa_stream << "i32";
         }
 };
 
@@ -87,11 +89,11 @@ class BlockAST : public BaseAST {
             std::cout << " }";
         }
 
-        void GenKoopa(std::ofstream &outfile) const override {
-            outfile << " {\n";
-            outfile << "\%entry:\n";
-            stmt->GenKoopa(outfile);
-            outfile << "\n}";
+        void GenKoopa(std::stringstream &koopa_stream) const override {
+            koopa_stream << " {\n";
+            koopa_stream << "\%entry:\n";
+            stmt->GenKoopa(koopa_stream);
+            koopa_stream << "\n}";
         }
 };
 
@@ -104,12 +106,12 @@ class StmtAST : public BaseAST {
             std::cout << "StmtAST { " << number << " }";
         }
 
-        void GenKoopa(std::ofstream &outfile) const override {
-            outfile << "\tret " << number;
+        void GenKoopa(std::stringstream &koopa_stream) const override {
+            koopa_stream << "\tret " << number;
         }
 };
 
-// ...
+// Number is not an AST type in this implementation
 // class NumberAST : public BaseAST {
 //     public:
 //         int int_const;
