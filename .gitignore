@@ -1,8 +1,10 @@
 *.DS_Store
 /build
 /debug
+/.vscode
 
 report_template.md
+
 hello.c
 hello.koopa
 hello.s
