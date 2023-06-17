@@ -37,8 +37,10 @@ int main(int argc, const char *argv[]) {
   assert(!ret_parser);
 
   // AST -> Koopa str
-  std::stringstream koopa_stream;
-  ast->GenKoopa(koopa_stream);
+  stringstream koopa_stream;
+  auto coutbuf = std::cout.rdbuf(koopa_stream.rdbuf());
+  ast->GenKoopa();
+  std::cout.rdbuf(coutbuf);
 
   // -koopa mode
   if (strcmp(mode, "-koopa") == 0) {
@@ -89,7 +91,7 @@ int main(int argc, const char *argv[]) {
 
   // Koopa IR program -> RISC-V program
   ofstream riscv_outfile(output);
-  auto coutbuf = std::cout.rdbuf(riscv_outfile.rdbuf());
+  coutbuf = std::cout.rdbuf(riscv_outfile.rdbuf());
   Visit(raw);
   std::cout.rdbuf(coutbuf);
 

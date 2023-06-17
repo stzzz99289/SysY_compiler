@@ -5,5 +5,5 @@ int main() {
   asd */
 
   // aaaa
-  return 100;
+  return 0;
 }
