@@ -89,3 +89,28 @@ void Visit(const koopa_raw_return_t &ret) {
 void Visit(const koopa_raw_integer_t &integer) {
     std::cout << "\tli a0, " << integer.value << "\n";
 }
+
+// [example]
+// handle raw program
+// for (size_t i = 0; i < raw.funcs.len; ++i) {
+//   assert(raw.funcs.kind == KOOPA_RSIK_FUNCTION);
+//   koopa_raw_function_t func = (koopa_raw_function_t) raw.funcs.buffer[i];
+
+//   for (size_t j = 0; j < func->bbs.len; ++j) {
+//     assert(func->bbs.kind == KOOPA_RSIK_BASIC_BLOCK);
+//     koopa_raw_basic_block_t bb = (koopa_raw_basic_block_t) func->bbs.buffer[j];
+
+//     for (size_t k = 0; k < bb->insts.len; ++k) {
+//       assert(bb->insts.kind == KOOPA_RSIK_VALUE);
+
+//       koopa_raw_value_t value = (koopa_raw_value_t) bb->insts.buffer[k];
+//       assert(value->kind.tag == KOOPA_RVT_RETURN);
+
+//       koopa_raw_value_t ret_value = value->kind.data.ret.value;
+//       assert(ret_value->kind.tag == KOOPA_RVT_INTEGER);
+
+//       int32_t int_val = ret_value->kind.data.integer.value;
+//       assert(int_val == 0);
+//     }
+//   }
+// }
