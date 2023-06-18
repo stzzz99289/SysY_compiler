@@ -64,6 +64,11 @@ class BaseAST {
             return ele.str();
         }
 
+        void new_koopa_symbol() {
+            std::cout << "\t\%" << sym_num;
+            sym_num = sym_num + 1;
+        }
+
         static int sym_num; // next symbol number
         static int lsym_num; // symbol number where stores right op
         static int rsym_num; // symbol number where stores left op
@@ -260,15 +265,12 @@ class UnaryOpAST : public BaseAST {
             if (op == "+") {
             }
             else if (op == "-") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = sub 0, " << sym_name << "\n";
-                sym_num = sym_num + 1;
             }
             else if (op == "!") {
-                std::cout << "\t\%" << sym_num;
-                std::cout << " = eq " << sym_name;
-                std::cout << ", 0\n";
-                sym_num = sym_num + 1;
+                new_koopa_symbol();
+                std::cout << " = eq " << sym_name << ", 0\n";
             }
         }
 };
@@ -305,19 +307,16 @@ class MulExpAST_mul : public BaseAST {
 
             // combine two exps
             if (op == "*") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = mul " << lsym_name << ", " << rsym_name << "\n";
-                sym_num = sym_num + 1;
             }
             else if (op == "/") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = div " << lsym_name << ", " << rsym_name << "\n";
-                sym_num = sym_num + 1;
             }
             else if (op == "%") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = mod " << lsym_name << ", " << rsym_name << "\n";
-                sym_num = sym_num + 1;
             }
         }
 };
@@ -353,14 +352,12 @@ class AddExpAST_add : public BaseAST {
             std::string lsym_name = get_koopa_symbol();
 
             if (op == "+") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = add " << lsym_name << ", " << rsym_name << "\n";
-                sym_num = sym_num + 1;
             }
             else if (op == "-") {
-                std::cout << "\t\%" << sym_num;
+                new_koopa_symbol();
                 std::cout << " = sub " << lsym_name << ", " << rsym_name << "\n";
-                sym_num = sym_num + 1;
             }
         }
 };
