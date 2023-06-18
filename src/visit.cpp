@@ -180,7 +180,7 @@ void generate_div(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
 void generate_mod(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
   load_constant(lhs);
   load_constant(rhs);
-  std::cout << "\tmod ";
+  std::cout << "\trem ";
   new_riscv_tempreg();
   std::cout << ", ";
   riscv_by_koopa(lhs);
