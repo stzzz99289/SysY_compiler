@@ -15,24 +15,6 @@ FuncType  ::= "int";
 Block     ::= "{" Stmt "}";
 Stmt      ::= "return" Exp ";";
 
-Exp         ::= UnaryExp;
-PrimaryExp  ::= "(" Exp ")" | Number;
-UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
-UnaryOp     ::= "+" | "-" | "!";
-
-Number      ::= INT_CONST;
-*/
-
-/*
-Goal EBNF:
-CompUnit  ::= FuncDef;
-
-FuncDef   ::= FuncType IDENT "(" ")" Block;
-FuncType  ::= "int";
-
-Block     ::= "{" Stmt "}";
-Stmt      ::= "return" Exp ";";
-
 Exp         ::= UnaryExp | AddExp;
 PrimaryExp  ::= "(" Exp ")" | Number;
 UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
@@ -41,6 +23,21 @@ MulExp      ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
 AddExp      ::= MulExp | AddExp ("+" | "-") MulExp;
 
 Number      ::= INT_CONST;
+*/
+
+/*
+lv3.3 EBNF:
+Exp         ::= LOrExp;
+PrimaryExp  ::= ...;
+Number      ::= ...;
+UnaryExp    ::= ...;
+UnaryOp     ::= ...;
+MulExp      ::= ...;
+AddExp      ::= ...;
+RelExp      ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp       ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp     ::= EqExp | LAndExp "&&" EqExp;
+LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
 */
 
 // Base class for all ASTs
@@ -359,6 +356,180 @@ class AddExpAST_add : public BaseAST {
                 new_koopa_symbol();
                 std::cout << " = sub " << lsym_name << ", " << rsym_name << "\n";
             }
+        }
+};
+
+// RelExp AST
+class RelExpAST_add : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> add_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            add_exp->GenKoopa();
+        }
+};
+class RelExpAST_rel : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> rel_exp;
+        std::string op;
+        std::unique_ptr<BaseAST> add_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            // right exp
+            add_exp->GenKoopa();
+            std::string rsym_name = get_koopa_symbol();
+
+            // left exp
+            rel_exp->GenKoopa();
+            std::string lsym_name = get_koopa_symbol();
+
+            if (op == "<") {
+                new_koopa_symbol();
+                std::cout << " = lt " << lsym_name << ", " << rsym_name << "\n";
+            }
+            else if (op == ">") {
+                new_koopa_symbol();
+                std::cout << " = gt " << lsym_name << ", " << rsym_name << "\n";
+            }
+            else if (op == "<=") {
+                new_koopa_symbol();
+                std::cout << " = le " << lsym_name << ", " << rsym_name << "\n";
+            }
+            else if (op == ">=") {
+                new_koopa_symbol();
+                std::cout << " = ge " << lsym_name << ", " << rsym_name << "\n";
+            }
+        }
+};
+
+// EqExp AST
+class EqExpAST_rel : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> rel_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            rel_exp->GenKoopa();
+        }
+};
+class EqExpAST_eq : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> eq_exp;
+        std::string op;
+        std::unique_ptr<BaseAST> rel_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            // right exp
+            rel_exp->GenKoopa();
+            std::string rsym_name = get_koopa_symbol();
+
+            // left exp
+            eq_exp->GenKoopa();
+            std::string lsym_name = get_koopa_symbol();
+
+            if (op == "==") {
+                new_koopa_symbol();
+                std::cout << " = eq " << lsym_name << ", " << rsym_name << "\n";
+            }
+            else if (op == "!=") {
+                new_koopa_symbol();
+                std::cout << " = ne " << lsym_name << ", " << rsym_name << "\n";
+            }
+        }
+};
+
+// LAndExp AST
+class LAndExpAST_eq : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> eq_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            eq_exp->GenKoopa();
+        }
+};
+class LAndExpAST_and : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> land_exp;
+        std::unique_ptr<BaseAST> eq_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            // right exp
+            eq_exp->GenKoopa();
+            std::string rsym_name = get_koopa_symbol();
+
+            // left exp
+            land_exp->GenKoopa();
+            std::string lsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = ne " << lsym_name << ", 0\n";
+            lsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = ne " << rsym_name << ", 0\n";
+            rsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = and " << lsym_name << ", " << rsym_name << "\n";
+        }
+};
+
+// LorExp AST
+class LOrExpAST_and : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> land_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            land_exp->GenKoopa();
+        }
+};
+class LOrExpAST_or : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> lor_exp;
+        std::unique_ptr<BaseAST> land_exp;
+
+        void Dump() const override {
+        }
+
+        void GenKoopa() override {
+            // right exp
+            land_exp->GenKoopa();
+            std::string rsym_name = get_koopa_symbol();
+
+            // left exp
+            lor_exp->GenKoopa();
+            std::string lsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = ne " << lsym_name << ", 0\n";
+            lsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = ne " << rsym_name << ", 0\n";
+            rsym_name = get_koopa_symbol();
+
+            new_koopa_symbol();
+            std::cout << " = or " << lsym_name << ", " << rsym_name << "\n";
         }
 };
 
