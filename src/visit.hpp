@@ -21,11 +21,18 @@ void Visit(const koopa_raw_binary_t &binary);
 
 // generate riscv code for binary ops
 void generate_eq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_neq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_mul(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_div(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_mod(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_add(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_sub(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_lt(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_gt(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_le(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_ge(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_and(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+void generate_or(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 
 // helper functions
 void load_constant(const koopa_raw_value_t &value);
