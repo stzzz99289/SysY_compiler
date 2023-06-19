@@ -9,43 +9,40 @@
 
 /*
 Current EBNF:
-CompUnit    ::= FuncDef;
+CompUnit      ::= FuncDef;
 
-FuncDef     ::= FuncType IDENT "(" ")" Block;
-FuncType    ::= "int";
-
-Block       ::= "{" Stmt "}";
-Stmt        ::= "return" Exp ";";
-
-Exp         ::= LOrExp;
-PrimaryExp  ::= "(" Exp ")" | Number;
-Number      ::= INT_CONST;
-UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
-UnaryOp     ::= "+" | "-" | "!";
-MulExp      ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
-AddExp      ::= MulExp | AddExp ("+" | "-") MulExp;
-RelExp      ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
-EqExp       ::= RelExp | EqExp ("==" | "!=") RelExp;
-LAndExp     ::= EqExp | LAndExp "&&" EqExp;
-LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
-*/
-
-/*
-lv 4.1 EBNF
-Decl          ::= ConstDecl;
+Decl          ::= ConstDecl | VarDecl;
 ConstDecl     ::= "const" BType ConstDefList ";"
 ConstDefList  ::= ConstDef | ConstDefList "," ConstDef
 BType         ::= "int";
 ConstDef      ::= IDENT "=" ConstInitVal;
 ConstInitVal  ::= ConstExp;
+VarDecl       ::= BType VarDefList ";";
+VarDefList    ::= VarDef | VarDefList "," VarDef
+VarDef        ::= IDENT | IDENT "=" InitVal;
+InitVal       ::= Exp;
+
+FuncDef       ::= FuncType IDENT "(" ")" Block;
+FuncType      ::= "int";
 
 Block         ::= "{" BlockItemList "}"; 
 BlockItemList ::= | BlockItemList BlockItem
 BlockItem     ::= Decl | Stmt;
+Stmt          ::= LVal "=" Exp ";"
+                | "return" Exp ";";
 
+Exp           ::= LOrExp;
 LVal          ::= IDENT;
 PrimaryExp    ::= "(" Exp ")" | LVal | Number;
-
+Number        ::= INT_CONST;
+UnaryExp      ::= PrimaryExp | UnaryOp UnaryExp;
+UnaryOp       ::= "+" | "-" | "!";
+MulExp        ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
+AddExp        ::= MulExp | AddExp ("+" | "-") MulExp;
+RelExp        ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
+EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
+LAndExp       ::= EqExp | LAndExp "&&" EqExp;
+LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 ConstExp      ::= Exp;
 */
 
@@ -85,6 +82,7 @@ class BaseAST {
         static int lsym_num; // symbol number where stores right op
         static int rsym_num; // symbol number where stores left op
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
+        static std::string var_mode; // "load" or "store" for different LVal koopa code
 };
 
 // CompUnit AST
@@ -201,14 +199,12 @@ class BlockItemAST : public BaseAST {
 };
 
 // Stmt AST
-class StmtAST : public BaseAST {
+class StmtAST_ret : public BaseAST {
     public:
         std::unique_ptr<BaseAST> exp;
 
         void Dump() const override {
-            std::cout << "StmtAST {\n";
-            exp->Dump();
-            std::cout << "\n}";
+
         }
 
         void GenKoopa() override {
@@ -216,6 +212,23 @@ class StmtAST : public BaseAST {
 
             std::string sym_name = get_koopa_symbol();
             std::cout << "\tret " << sym_name;
+        }
+};
+class StmtAST_var : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> l_val;
+        std::unique_ptr<BaseAST> exp;
+
+        void Dump() const override {
+
+        }
+
+        void GenKoopa() override {
+            exp->GenKoopa();
+
+            var_mode = "store";
+            l_val->GenKoopa();
+            var_mode = "none";
         }
 };
 
@@ -297,19 +310,20 @@ class PrimaryExpAST_num : public BaseAST {
 };
 class PrimaryExpAST_val : public BaseAST {
     public:
-        std::unique_ptr<BaseAST> lval_ast;
+        std::unique_ptr<BaseAST> l_val;
 
         void Dump() const override {
 
         } 
 
         void GenKoopa() override {
-            proc_const.first = true;
-            proc_const.second = lval_ast->GetValue();
+            var_mode = "load";
+            l_val->GenKoopa();
+            var_mode = "none";
         }
 
         int GetValue() override {
-            return lval_ast->GetValue();
+            return l_val->GetValue();
         }
 };
 
@@ -747,14 +761,14 @@ class LOrExpAST_or : public BaseAST {
 // Decl AST
 class DeclAST : public BaseAST {
     public:
-        std::unique_ptr<BaseAST> const_decl;
+        std::unique_ptr<BaseAST> some_decl;
 
         void Dump() const override {
 
         } 
 
         void GenKoopa() override {
-            const_decl->GenKoopa();
+            some_decl->GenKoopa();
         }
 };
 
@@ -828,7 +842,8 @@ class ConstDefAST : public BaseAST {
 
         void GenKoopa() override {
             // insert new const symbol to symtab
-            insert_sym(ident, const_init_val->GetValue());
+            sym_info_t info = const_init_val->GetValue();
+            insert_sym(ident, info);
         }
 };
 
@@ -860,12 +875,150 @@ class LValAST : public BaseAST {
         } 
 
         void GenKoopa() override {
-
+            sym_info_t info = get_sym_value(ident);
+            if (var_mode == "store") {
+                // generate koopa code for store to variable
+                if (info.index() == 1) { // var
+                    std::string sym_name = get_koopa_symbol();
+                    std::cout << "\tstore " << sym_name << ", " << std::get<std::string>(info) << "\n";
+                }
+                else { // store to const, wrong senmatics
+                    assert(false);
+                }
+            }
+            else if (var_mode == "load") {
+                // generate koopa code for load to variable
+                if (info.index() == 0) { // const
+                    proc_const.first = true;
+                    proc_const.second = std::get<int>(info);
+                }
+                else if (info.index() == 1){ // var
+                    new_koopa_symbol();
+                    std::cout << " = load " << std::get<std::string>(info) << "\n";
+                }
+                else {
+                    assert(false);
+                }
+            }
+            
         }
 
         int GetValue() override {
             // search from symbol table by ident to get value
-            return get_sym_value(ident);
+            sym_info_t info = get_sym_value(ident);
+            if (info.index() == 0) {
+                int value = std::get<int>(info);
+                return value;
+            }
+            else {
+                assert(false);
+                return 0;
+            }
+        }
+};
+
+// VarDecl AST
+class VarDeclAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> b_type;
+        std::unique_ptr<BaseAST> var_def_list;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            var_def_list->GenKoopa();
+        }
+};
+
+// VarDefList AST
+class VarDefListAST_def : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> var_def;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            var_def->GenKoopa();
+        }
+};
+class VarDefListAST_lst : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> var_def_list;
+        std::unique_ptr<BaseAST> var_def;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            var_def_list->GenKoopa();
+            var_def->GenKoopa();
+        }
+};
+// VarDef AST
+class VarDefAST_dec : public BaseAST {
+    public:
+        std::string ident;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // allocating new memory for variable
+            std::string alloc_name = "@" + ident;
+            sym_info_t info = alloc_name;
+            insert_sym(ident, info);
+
+            // generate koopa code
+            std::cout << alloc_name << " = alloc i32\n";
+        }
+};
+class VarDefAST_def : public BaseAST {
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> init_val;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // allocating new memory for variable
+            std::string alloc_name = "@" + ident;
+            sym_info_t info = alloc_name;
+            insert_sym(ident, info);
+
+            // generate koopa code for alloc
+            std::cout << "\t" << alloc_name << " = alloc i32\n";
+
+            // generate koopa code for init_val calculation
+            init_val->GenKoopa();
+
+            // store result
+            std::cout << "\tstore " << get_koopa_symbol() << ", " << alloc_name << "\n";
+            proc_const.first = false;
+        }
+};
+// InitVal AST
+class InitValAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return exp->GetValue();
         }
 };
 

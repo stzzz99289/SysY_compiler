@@ -1,14 +1,14 @@
 #include "symtab.hpp"
 
-std::map<std::string, int> symtab = {};
+std::map<sym_name_t, sym_info_t> symtab = {};
 
-void insert_sym(std::string sym, int info) {
+void insert_sym(sym_name_t sym, sym_info_t info) {
     symtab[sym] = info;
 }
 
-int get_sym_value(std::string sym) {
+sym_info_t get_sym_value(sym_name_t sym) {
     if (sym_exists(sym)) {
-        std::map<std::string, int>::iterator it = symtab.find(sym);
+        std::map<sym_name_t, sym_info_t>::iterator it = symtab.find(sym);
         return it->second;
     }
     else {
@@ -17,8 +17,8 @@ int get_sym_value(std::string sym) {
     }
 }
 
-bool sym_exists(std::string sym) {
-    std::map<std::string, int>::iterator it = symtab.find(sym);
+bool sym_exists(sym_name_t sym) {
+    std::map<sym_name_t, sym_info_t>::iterator it = symtab.find(sym);
 
     return (it != symtab.end());
 }

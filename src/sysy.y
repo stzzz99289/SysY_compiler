@@ -52,10 +52,11 @@ using namespace std;
 %type <ast_val> RelExp EqExp LAndExp LOrExp
 
 // lv4
-%type <ast_val> Decl ConstDecl BType ConstDef ConstDefList ConstInitVal
+%type <ast_val> VarDecl VarDefList VarDef InitVal
+%type <ast_val> ConstExp ConstDecl BType ConstDef ConstDefList ConstInitVal
 %type <ast_val> BlockItem BlockItemList
 %type <ast_val> LVal
-%type <ast_val> ConstExp
+%type <ast_val> Decl
 
 %%
 
@@ -123,8 +124,14 @@ BlockItem
 
 Stmt
   : RETURN Exp ';' {
-    auto ast = new StmtAST();
+    auto ast = new StmtAST_ret();
     ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | LVal '=' Exp ';' {
+    auto ast = new StmtAST_var();
+    ast->l_val = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;
@@ -154,7 +161,7 @@ PrimaryExp
   }
   | LVal {
     auto ast = new PrimaryExpAST_val();
-    ast->lval_ast = unique_ptr<BaseAST>($1);
+    ast->l_val = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | Number {
@@ -337,7 +344,12 @@ LOrExp
 Decl
   : ConstDecl {
     auto ast = new DeclAST();
-    ast->const_decl = unique_ptr<BaseAST>($1);
+    ast->some_decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDecl {
+    auto ast = new DeclAST();
+    ast->some_decl = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -396,7 +408,47 @@ LVal
     $$ = ast;
   }
   ;
-
+VarDecl
+  : BType VarDefList ';' {
+    auto ast = new VarDeclAST();
+    ast->b_type = unique_ptr<BaseAST>($1);
+    ast->var_def_list = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+VarDefList
+  : VarDef {
+    auto ast = new VarDefListAST_def();
+    ast->var_def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDefList ',' VarDef {
+    auto ast = new VarDefListAST_lst();
+    ast->var_def_list = unique_ptr<BaseAST>($1);
+    ast->var_def = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+VarDef
+  : IDENT {
+    auto ast = new VarDefAST_dec();
+    ast->ident = *unique_ptr<std::string>($1);
+    $$ = ast;
+  }
+  | IDENT '=' InitVal {
+    auto ast = new VarDefAST_def();
+    ast->ident = *unique_ptr<std::string>($1);
+    ast->init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+InitVal
+  : Exp {
+    auto ast = new InitValAST();
+    ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
 // const symbol
 Number
   : INT_CONST {
