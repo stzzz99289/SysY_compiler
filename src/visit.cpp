@@ -159,7 +159,6 @@ void Visit(const koopa_raw_binary_t &binary) {
 // generate riscv code for binary ops
 void generate_eq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
   if (rhs->kind.tag == KOOPA_RVT_INTEGER && rhs->kind.data.integer.value == 0) {
-      // '!' operator for constant
       load_constant(lhs);
       std::cout << "\txor ";
       new_riscv_tempreg();
@@ -169,16 +168,7 @@ void generate_eq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
       std::cout << "\tseqz " << current_tempreg() << ", " << current_tempreg() << "\n";
   }
   else {
-    load_constant(lhs);
-    load_constant(rhs);
-    std::cout << "\txor ";
-    new_riscv_tempreg();
-    std::cout << ", ";
-    riscv_by_koopa(lhs);
-    std::cout << ", ";
-    riscv_by_koopa(rhs);
-    std::cout << "\n";
-
+    generate_bin_riscv("xor", lhs, rhs);
     std::cout << "\tseqz " << current_tempreg() << ", " << current_tempreg() << "\n";
   }
 }
@@ -195,166 +185,61 @@ void generate_neq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
       std::cout << "\tsnez " << current_tempreg() << ", " << current_tempreg() << "\n";
   }
   else {
-    load_constant(lhs);
-    load_constant(rhs);
-    std::cout << "\txor ";
-    new_riscv_tempreg();
-    std::cout << ", ";
-    riscv_by_koopa(lhs);
-    std::cout << ", ";
-    riscv_by_koopa(rhs);
-    std::cout << "\n";
-
+    generate_bin_riscv("xor", lhs, rhs);
     std::cout << "\tsnez " << current_tempreg() << ", " << current_tempreg() << "\n";
   }
 }
 
 void generate_mul(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tmul ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("mul", lhs, rhs);
 }
 
 void generate_div(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tdiv ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("div", lhs, rhs);
 }
 
 void generate_mod(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\trem ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("rem", lhs, rhs);
 }
 
 void generate_add(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs){
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tadd ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("add", lhs, rhs);
 }
 
 void generate_sub(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tsub ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("sub", lhs, rhs);
 }
 
 void generate_lt(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tslt ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("slt", lhs, rhs);
 }
 
 void generate_gt(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tsgt ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("sgt", lhs, rhs);
 }
 
 void generate_le(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tsgt ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
-
+  generate_bin_riscv("sgt", lhs, rhs);
   std::cout << "\tseqz " << current_tempreg() << ", " << current_tempreg() << "\n";
 }
 
 void generate_ge(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tslt ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
-
+  generate_bin_riscv("slt", lhs, rhs);
   std::cout << "\tseqz " << current_tempreg() << ", " << current_tempreg() << "\n";
 }
 
 void generate_and(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tand ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("and", lhs, rhs);
 }
 
 void generate_or(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  load_constant(lhs);
-  load_constant(rhs);
-  std::cout << "\tor ";
-  new_riscv_tempreg();
-  std::cout << ", ";
-  riscv_by_koopa(lhs);
-  std::cout << ", ";
-  riscv_by_koopa(rhs);
-  std::cout << "\n";
+  generate_bin_riscv("or", lhs, rhs);
 }
 
 // helper functions
 void load_constant(const koopa_raw_value_t &value) {
   if (value->kind.tag == KOOPA_RVT_INTEGER) {
     int constant = value->kind.data.integer.value;
-    // if (constant == 0) {
-    //   std::cout << "\tli ";
-    //   new_riscv_tempreg();
-    //   std::cout << ", x0" << "\n";
-    //   return;
-    // }
     std::cout << "\tli ";
     new_riscv_tempreg();
     std::cout << ", " << constant << "\n";
@@ -392,6 +277,27 @@ void riscv_by_koopa(const koopa_raw_value_t &value) {
   else {
     assert(false);
   }
+}
+
+void generate_bin_riscv(std::string riscv, const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
+  load_constant(lhs);
+  load_constant(rhs);
+
+  // release constant tempregs
+  if (lhs->kind.tag == KOOPA_RVT_INTEGER) {
+    used_tempreg_count = used_tempreg_count - 1;
+  }
+  if (rhs->kind.tag == KOOPA_RVT_INTEGER) {
+    used_tempreg_count = used_tempreg_count - 1;
+  }
+
+  std::cout << "\t" << riscv << " ";
+  new_riscv_tempreg();
+  std::cout << ", ";
+  riscv_by_koopa(lhs);
+  std::cout << ", ";
+  riscv_by_koopa(rhs);
+  std::cout << "\n";
 }
 
 // [example]

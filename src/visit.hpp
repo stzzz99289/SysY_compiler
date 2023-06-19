@@ -39,3 +39,4 @@ void load_constant(const koopa_raw_value_t &value);
 void new_riscv_tempreg();
 std::string current_tempreg();
 void riscv_by_koopa(const koopa_raw_value_t &value);
+void generate_bin_riscv(std::string riscv, const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
