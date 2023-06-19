@@ -4,40 +4,49 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <cassert>
+#include "symtab.hpp"
 
 /*
 Current EBNF:
-CompUnit  ::= FuncDef;
+CompUnit    ::= FuncDef;
 
-FuncDef   ::= FuncType IDENT "(" ")" Block;
-FuncType  ::= "int";
+FuncDef     ::= FuncType IDENT "(" ")" Block;
+FuncType    ::= "int";
 
-Block     ::= "{" Stmt "}";
-Stmt      ::= "return" Exp ";";
+Block       ::= "{" Stmt "}";
+Stmt        ::= "return" Exp ";";
 
-Exp         ::= UnaryExp | AddExp;
+Exp         ::= LOrExp;
 PrimaryExp  ::= "(" Exp ")" | Number;
+Number      ::= INT_CONST;
 UnaryExp    ::= PrimaryExp | UnaryOp UnaryExp;
 UnaryOp     ::= "+" | "-" | "!";
 MulExp      ::= UnaryExp | MulExp ("*" | "/" | "%") UnaryExp;
 AddExp      ::= MulExp | AddExp ("+" | "-") MulExp;
-
-Number      ::= INT_CONST;
-*/
-
-/*
-lv3.3 EBNF:
-Exp         ::= LOrExp;
-PrimaryExp  ::= ...;
-Number      ::= ...;
-UnaryExp    ::= ...;
-UnaryOp     ::= ...;
-MulExp      ::= ...;
-AddExp      ::= ...;
 RelExp      ::= AddExp | RelExp ("<" | ">" | "<=" | ">=") AddExp;
 EqExp       ::= RelExp | EqExp ("==" | "!=") RelExp;
 LAndExp     ::= EqExp | LAndExp "&&" EqExp;
 LOrExp      ::= LAndExp | LOrExp "||" LAndExp;
+*/
+
+/*
+lv 4.1 EBNF
+Decl          ::= ConstDecl;
+ConstDecl     ::= "const" BType ConstDefList ";"
+ConstDefList  ::= ConstDef | ConstDefList "," ConstDef
+BType         ::= "int";
+ConstDef      ::= IDENT "=" ConstInitVal;
+ConstInitVal  ::= ConstExp;
+
+Block         ::= "{" BlockItemList "}"; 
+BlockItemList ::= | BlockItemList BlockItem
+BlockItem     ::= Decl | Stmt;
+
+LVal          ::= IDENT;
+PrimaryExp    ::= "(" Exp ")" | LVal | Number;
+
+ConstExp      ::= Exp;
 */
 
 // Base class for all ASTs
@@ -47,6 +56,12 @@ class BaseAST {
 
         virtual void Dump() const = 0;
         virtual void GenKoopa() = 0;
+        virtual int GetValue() {
+            return 0;
+        };
+        virtual std::string GetOp() {
+            return "";
+        };
 
         std::string get_koopa_symbol() {
             std::stringstream ele; // element name (constant or symbol)
@@ -128,19 +143,60 @@ class FuncTypeAST : public BaseAST {
 // Block AST
 class BlockAST : public BaseAST {
     public:
-        std::unique_ptr<BaseAST> stmt;
+        std::unique_ptr<BaseAST> block_item_lst;
 
         void Dump() const override {
             std::cout << "BlockAST {\n";
-            stmt->Dump();
+            block_item_lst->Dump();
             std::cout << "\n}";
         }
 
         void GenKoopa() override {
             std::cout << " {\n";
             std::cout << "\%entry:\n";
-            stmt->GenKoopa();
+            block_item_lst->GenKoopa();
             std::cout << "\n}";
+        }
+};
+
+// BlockItemList AST
+class BlockItemListAST_emp : public BaseAST {
+    public:
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+
+        }
+};
+class BlockItemListAST_lst : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> block_item_lst;
+        std::unique_ptr<BaseAST> block_item;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            block_item_lst->GenKoopa();
+            block_item->GenKoopa();
+        }
+};
+
+// BlockItem AST
+class BlockItemAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> some_block;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            some_block->GenKoopa();
         }
 };
 
@@ -163,6 +219,24 @@ class StmtAST : public BaseAST {
         }
 };
 
+// ConstExp AST
+class ConstExpAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return exp->GetValue();
+        }
+};
+
 // Exp AST
 class ExpAST : public BaseAST {
     public:
@@ -176,6 +250,10 @@ class ExpAST : public BaseAST {
 
         void GenKoopa() override {
             some_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return some_exp->GetValue();
         }
 };
 
@@ -193,6 +271,10 @@ class PrimaryExpAST_exp : public BaseAST {
         void GenKoopa() override {
             exp->GenKoopa();
         }
+
+        int GetValue() override {
+            return exp->GetValue();
+        }
 };
 class PrimaryExpAST_num : public BaseAST {
     public:
@@ -207,6 +289,27 @@ class PrimaryExpAST_num : public BaseAST {
         void GenKoopa() override {
             proc_const.first = true;
             proc_const.second = number;
+        }
+
+        int GetValue() override {
+            return number;
+        }
+};
+class PrimaryExpAST_val : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> lval_ast;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            proc_const.first = true;
+            proc_const.second = lval_ast->GetValue();
+        }
+
+        int GetValue() override {
+            return lval_ast->GetValue();
         }
 };
 
@@ -223,6 +326,10 @@ class UnaryExpAST_pri : public BaseAST {
 
         void GenKoopa() override {
             primary_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return primary_exp->GetValue();
         }
 };
 class UnaryExpAST_uop : public BaseAST {
@@ -241,6 +348,21 @@ class UnaryExpAST_uop : public BaseAST {
         void GenKoopa() override {
             unary_exp->GenKoopa();
             unary_op->GenKoopa();
+        }
+
+        int GetValue() override {
+            std::string op = unary_op->GetOp();
+            if (op == "+") {
+                return unary_exp->GetValue();
+            }
+            else if (op == "-") {
+                return -unary_exp->GetValue();
+            }
+            else if (op == "!") {
+                return !unary_exp->GetValue();
+            }
+            assert(false);
+            return 0;
         }
 };
 
@@ -270,6 +392,10 @@ class UnaryOpAST : public BaseAST {
                 std::cout << " = eq " << sym_name << ", 0\n";
             }
         }
+
+        std::string GetOp() override {
+            return op;
+        }
 };
 
 // MulExp AST
@@ -282,6 +408,10 @@ class MulExpAST_una : public BaseAST {
 
         void GenKoopa() override {
             unary_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return unary_exp->GetValue();
         }
 };
 class MulExpAST_mul : public BaseAST {
@@ -316,6 +446,20 @@ class MulExpAST_mul : public BaseAST {
                 std::cout << " = mod " << lsym_name << ", " << rsym_name << "\n";
             }
         }
+
+        int GetValue() override {
+            if (op == "*") {
+                return mul_exp->GetValue() * unary_exp->GetValue();
+            }
+            else if (op == "/") {
+                return mul_exp->GetValue() / unary_exp->GetValue();
+            }
+            else if (op == "%") {
+                return mul_exp->GetValue() % unary_exp->GetValue();
+            }
+            assert(false);
+            return 0;
+        }
 };
 
 // AddExp AST
@@ -328,6 +472,10 @@ class AddExpAST_mul : public BaseAST {
 
         void GenKoopa() override {
             mul_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return mul_exp->GetValue();
         }
 };
 class AddExpAST_add : public BaseAST {
@@ -357,6 +505,17 @@ class AddExpAST_add : public BaseAST {
                 std::cout << " = sub " << lsym_name << ", " << rsym_name << "\n";
             }
         }
+
+        int GetValue() override {
+            if (op == "+") {
+                return add_exp->GetValue() + mul_exp->GetValue();
+            }
+            else if (op == "-") {
+                return add_exp->GetValue() - mul_exp->GetValue();
+            }
+            assert(false);
+            return 0;
+        }
 };
 
 // RelExp AST
@@ -369,6 +528,10 @@ class RelExpAST_add : public BaseAST {
 
         void GenKoopa() override {
             add_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return add_exp->GetValue();
         }
 };
 class RelExpAST_rel : public BaseAST {
@@ -406,6 +569,23 @@ class RelExpAST_rel : public BaseAST {
                 std::cout << " = ge " << lsym_name << ", " << rsym_name << "\n";
             }
         }
+
+        int GetValue() override {
+            if (op == "<") {
+                return rel_exp->GetValue() < add_exp->GetValue();
+            }
+            else if (op == ">") {
+                return rel_exp->GetValue() > add_exp->GetValue();
+            }
+            else if (op == "<=") {
+                return rel_exp->GetValue() <= add_exp->GetValue();
+            }
+            else if (op == ">=") {
+                return rel_exp->GetValue() >= add_exp->GetValue();
+            }
+            assert(false);
+            return 0;
+        }
 };
 
 // EqExp AST
@@ -418,6 +598,10 @@ class EqExpAST_rel : public BaseAST {
 
         void GenKoopa() override {
             rel_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return rel_exp->GetValue();
         }
 };
 class EqExpAST_eq : public BaseAST {
@@ -447,6 +631,17 @@ class EqExpAST_eq : public BaseAST {
                 std::cout << " = ne " << lsym_name << ", " << rsym_name << "\n";
             }
         }
+
+        int GetValue() override {
+            if (op == "==") {
+                return eq_exp->GetValue() == rel_exp->GetValue();
+            }
+            else if (op == "!=") {
+                return eq_exp->GetValue() != rel_exp->GetValue();
+            }
+            assert(false);
+            return 0;
+        }
 };
 
 // LAndExp AST
@@ -459,6 +654,10 @@ class LAndExpAST_eq : public BaseAST {
 
         void GenKoopa() override {
             eq_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return eq_exp->GetValue();
         }
 };
 class LAndExpAST_and : public BaseAST {
@@ -489,6 +688,10 @@ class LAndExpAST_and : public BaseAST {
             new_koopa_symbol();
             std::cout << " = and " << lsym_name << ", " << rsym_name << "\n";
         }
+
+        int GetValue() override {
+            return land_exp->GetValue() && eq_exp->GetValue();
+        }
 };
 
 // LorExp AST
@@ -501,6 +704,10 @@ class LOrExpAST_and : public BaseAST {
 
         void GenKoopa() override {
             land_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return land_exp->GetValue();
         }
 };
 class LOrExpAST_or : public BaseAST {
@@ -530,6 +737,135 @@ class LOrExpAST_or : public BaseAST {
 
             new_koopa_symbol();
             std::cout << " = or " << lsym_name << ", " << rsym_name << "\n";
+        }
+
+        int GetValue() override {
+            return lor_exp->GetValue() || land_exp->GetValue();
+        }
+};
+
+// Decl AST
+class DeclAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> const_decl;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            const_decl->GenKoopa();
+        }
+};
+
+// ConstDecl AST
+class ConstDeclAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> b_type;
+        std::unique_ptr<BaseAST> const_def_list;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            const_def_list->GenKoopa();
+        }
+};
+
+// ConstDefList AST
+class ConstDefListAST_def : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> const_def;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            const_def->GenKoopa();
+        }
+};
+class ConstDefListAST_lst : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> const_def_list;
+        std::unique_ptr<BaseAST> const_def;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // from left to right
+            const_def_list->GenKoopa();
+            const_def->GenKoopa();
+        }
+};
+
+// BType AST
+class BTypeAST : public BaseAST {
+    public:
+        const std::string koopa_string = "i32";
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+
+        }
+};
+
+// ConstDef AST
+class ConstDefAST : public BaseAST {
+    public:
+        std::string ident;
+        std::unique_ptr<BaseAST> const_init_val;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // insert new const symbol to symtab
+            insert_sym(ident, const_init_val->GetValue());
+        }
+};
+
+// ConstInitVal AST
+class ConstInitValAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> const_exp;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            const_exp->GenKoopa();
+        }
+
+        int GetValue() override {
+            return const_exp->GetValue();
+        }
+};
+
+// LVal AST
+class LValAST : public BaseAST {
+    public:
+        std::string ident;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+
+        }
+
+        int GetValue() override {
+            // search from symbol table by ident to get value
+            return get_sym_value(ident);
         }
 };
 
