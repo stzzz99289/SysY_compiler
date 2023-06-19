@@ -251,10 +251,10 @@ void load_constant(const koopa_raw_value_t &value) {
 }
 
 void new_riscv_tempreg() {
-  // TODO: better temp reg allocation method
-  assert(used_tempreg_count < TEMPREG_NUM);
+  // TODO: better temp reg allocation method, current may be buggy
+  // assert(used_tempreg_count < TEMPREG_NUM);
   std::cout << tempreg_lst.at(used_tempreg_count);
-  used_tempreg_count = used_tempreg_count + 1;
+  used_tempreg_count = (used_tempreg_count + 1) % TEMPREG_NUM;
 }
 
 std::string current_tempreg() {
