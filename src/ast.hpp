@@ -969,7 +969,7 @@ class VarDefAST_dec : public BaseAST {
         } 
 
         void GenKoopa() override {
-            // allocating new memory for variable
+            // insert alloc name to symtab
             std::string alloc_name = "@" + ident;
             sym_info_t info = alloc_name;
             insert_sym(ident, info);
@@ -988,7 +988,7 @@ class VarDefAST_def : public BaseAST {
         } 
 
         void GenKoopa() override {
-            // allocating new memory for variable
+            // insert alloc name to symtab
             std::string alloc_name = "@" + ident;
             sym_info_t info = alloc_name;
             insert_sym(ident, info);

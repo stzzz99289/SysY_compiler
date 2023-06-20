@@ -3,10 +3,6 @@
 #include "koopa.h"
 #include <vector>
 
-// temp register list
-// std::vector<std::string> tempreg_lst;
-// int used_tempreg_count;
-
 // basic visit
 void Visit(const koopa_raw_program_t &program);
 void Visit(const koopa_raw_slice_t &slice);
@@ -18,6 +14,8 @@ void Visit(const koopa_raw_value_t &value);
 void Visit(const koopa_raw_return_t &ret);
 void Visit(const koopa_raw_integer_t &integer);
 void Visit(const koopa_raw_binary_t &binary);
+void Visit(const koopa_raw_store_t &store);
+void Visit(const koopa_raw_load_t &load);
 
 // generate riscv code for binary ops
 void generate_eq(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
@@ -35,8 +33,11 @@ void generate_and(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 void generate_or(const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
 
 // helper functions
-void load_constant(const koopa_raw_value_t &value);
+void load_value(const koopa_raw_value_t &value);
 void new_riscv_tempreg();
 std::string current_tempreg();
 void riscv_by_koopa(const koopa_raw_value_t &value);
+int offset_by_koopa(const koopa_raw_value_t &value);
 void generate_bin_riscv(std::string riscv, const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs);
+std::string set_visit_mode (std::string new_mode);
+void reset_visit_mode (std::string old_mode);
