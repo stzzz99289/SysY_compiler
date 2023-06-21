@@ -47,7 +47,7 @@ using namespace std;
 %type <ast_val> FuncDef FuncType Block Stmt
 
 // lv3
-%type <ast_val> Exp PrimaryExp UnaryExp UnaryOp 
+%type <ast_val> ExpList Exp PrimaryExp UnaryExp UnaryOp 
 %type <ast_val> MulExp AddExp
 %type <ast_val> RelExp EqExp LAndExp LOrExp
 
@@ -123,15 +123,25 @@ BlockItem
   ;
 
 Stmt
-  : RETURN Exp ';' {
+  : RETURN ExpList ';' {
     auto ast = new StmtAST_ret();
-    ast->exp = unique_ptr<BaseAST>($2);
+    ast->exp_list = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   | LVal '=' Exp ';' {
     auto ast = new StmtAST_var();
     ast->l_val = unique_ptr<BaseAST>($1);
     ast->exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  | Block {
+    auto ast = new StmtAST_blk();
+    ast->block = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | ExpList ';' {
+    auto ast = new StmtAST_lst();
+    ast->exp_list = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -141,6 +151,19 @@ ConstExp
   : Exp {
     auto ast = new ConstExpAST();
     ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+ExpList
+  : /* empty */ {
+    auto ast = new ExpListAST_emp();
+    $$ = ast;
+  }
+  | ExpList Exp {
+    auto ast = new ExpListAST_lst();
+    ast->exp_list = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   ;

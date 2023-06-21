@@ -46,11 +46,19 @@ LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 ConstExp      ::= Exp;
 */
 
+/*
+lv5.1 EBNF:
+Stmt ::= LVal "=" Exp ";"
+       | [Exp] ";"
+       | Block
+       | "return" [Exp] ";";
+*/
+
 // Base class for all ASTs
 class BaseAST {
     public:
+        // virtual methods
         virtual ~BaseAST() = default;
-
         virtual void Dump() const = 0;
         virtual void GenKoopa() = 0;
         virtual int GetValue() {
@@ -60,29 +68,16 @@ class BaseAST {
             return "";
         };
 
-        std::string get_koopa_symbol() {
-            std::stringstream ele; // element name (constant or symbol)
-            if (proc_const.first) {
-                ele << proc_const.second;
-                proc_const.first = false;
-            }
-            else {
-                ele << "\%" << sym_num-1;
-            }
+        // member methods
+        std::string get_koopa_symbol();
+        void new_koopa_symbol();
+        void update_current_symtab(sym_name_t sym, sym_info_t info);
 
-            return ele.str();
-        }
-
-        void new_koopa_symbol() {
-            std::cout << "\t\%" << sym_num;
-            sym_num = sym_num + 1;
-        }
-
-        static int sym_num; // next symbol number
-        static int lsym_num; // symbol number where stores right op
-        static int rsym_num; // symbol number where stores left op
+        // static memeber variables
+        static int sym_num; // next koopa symbol number
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
         static std::string var_mode; // "load" or "store" for different LVal koopa code
+        static std::shared_ptr<SymTable> current_symtab; // current block symbol table
 };
 
 // CompUnit AST
@@ -119,7 +114,20 @@ class FuncDefAST : public BaseAST {
         void GenKoopa() override {
             std::cout << "fun @" << ident << "(): ";
             func_type->GenKoopa();
+
+            // create first block symtab
+            auto sym_table = std::make_shared<SymTable>();
+            current_symtab = sym_table;
+
+            // only one basic block (%entry) before lv6
+            std::cout << " {\n";
+            std::cout << "\%entry:\n";
+
+            auto old_symtab = current_symtab;
             block->GenKoopa();
+            current_symtab = old_symtab;
+
+            std::cout << "\n}";
         }
 };
 
@@ -150,10 +158,7 @@ class BlockAST : public BaseAST {
         }
 
         void GenKoopa() override {
-            std::cout << " {\n";
-            std::cout << "\%entry:\n";
             block_item_lst->GenKoopa();
-            std::cout << "\n}";
         }
 };
 
@@ -201,14 +206,14 @@ class BlockItemAST : public BaseAST {
 // Stmt AST
 class StmtAST_ret : public BaseAST {
     public:
-        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> exp_list;
 
         void Dump() const override {
 
         }
 
         void GenKoopa() override {
-            exp->GenKoopa();
+            exp_list->GenKoopa();
 
             std::string sym_name = get_koopa_symbol();
             std::cout << "\tret " << sym_name;
@@ -231,6 +236,40 @@ class StmtAST_var : public BaseAST {
             var_mode = "none";
         }
 };
+class StmtAST_blk : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> block;
+    
+        void Dump() const override {
+
+        }
+
+        void GenKoopa() override {
+            // save old symtab
+            auto old_symtab = current_symtab;
+
+            // create empty block symtab
+            auto sym_table = std::make_shared<SymTable>();
+            sym_table->parent_symtab = old_symtab;
+
+            // entering block
+            current_symtab = sym_table;
+            block->GenKoopa();
+            current_symtab = old_symtab;
+        }
+};
+class StmtAST_lst : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp_list;
+    
+        void Dump() const override {
+
+        }
+
+        void GenKoopa() override {
+            exp_list->GenKoopa();
+        }
+};
 
 // ConstExp AST
 class ConstExpAST : public BaseAST {
@@ -247,6 +286,33 @@ class ConstExpAST : public BaseAST {
 
         int GetValue() override {
             return exp->GetValue();
+        }
+};
+
+// ExpList AST
+class ExpListAST_emp : public BaseAST {
+    public:
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+
+        }
+};
+class ExpListAST_lst : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp_list;
+        std::unique_ptr<BaseAST> exp;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            exp_list->GenKoopa();
+            exp->GenKoopa();
         }
 };
 
@@ -843,7 +909,7 @@ class ConstDefAST : public BaseAST {
         void GenKoopa() override {
             // insert new const symbol to symtab
             sym_info_t info = const_init_val->GetValue();
-            insert_sym(ident, info);
+            update_current_symtab(ident, info);
         }
 };
 
@@ -875,7 +941,7 @@ class LValAST : public BaseAST {
         } 
 
         void GenKoopa() override {
-            sym_info_t info = get_sym_value(ident);
+            sym_info_t info = current_symtab->get_sym_value(ident);
             if (var_mode == "store") {
                 // generate koopa code for store to variable
                 if (info.index() == 1) { // var
@@ -905,7 +971,7 @@ class LValAST : public BaseAST {
 
         int GetValue() override {
             // search from symbol table by ident to get value
-            sym_info_t info = get_sym_value(ident);
+            sym_info_t info = current_symtab->get_sym_value(ident);
             if (info.index() == 0) {
                 int value = std::get<int>(info);
                 return value;
@@ -970,9 +1036,9 @@ class VarDefAST_dec : public BaseAST {
 
         void GenKoopa() override {
             // insert alloc name to symtab
-            std::string alloc_name = "@" + ident;
+            std::string alloc_name = "@" + ident + "_" + std::to_string(current_symtab->index);
             sym_info_t info = alloc_name;
-            insert_sym(ident, info);
+            update_current_symtab(ident, info);
 
             // generate koopa code
             std::cout << alloc_name << " = alloc i32\n";
@@ -989,9 +1055,9 @@ class VarDefAST_def : public BaseAST {
 
         void GenKoopa() override {
             // insert alloc name to symtab
-            std::string alloc_name = "@" + ident;
+            std::string alloc_name = "@" + ident + "_" + std::to_string(current_symtab->index);
             sym_info_t info = alloc_name;
-            insert_sym(ident, info);
+            update_current_symtab(ident, info);
 
             // generate koopa code for alloc
             std::cout << "\t" << alloc_name << " = alloc i32\n";

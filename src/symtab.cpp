@@ -1,24 +1,29 @@
 #include "symtab.hpp"
 
-std::map<sym_name_t, sym_info_t> symtab = {};
+int SymTable::symtab_count = 0;
 
-void insert_sym(sym_name_t sym, sym_info_t info) {
-    symtab[sym] = info;
+SymTable::SymTable() {
+    symtab = { };
+    parent_symtab = nullptr;
+    index = ++symtab_count;
 }
 
-sym_info_t get_sym_value(sym_name_t sym) {
-    if (sym_exists(sym)) {
-        std::map<sym_name_t, sym_info_t>::iterator it = symtab.find(sym);
+sym_info_t 
+SymTable::get_sym_value(sym_name_t sym) {
+    symtab_t::iterator it = symtab.find(sym);
+    if (it != symtab.end()) {
+        // symbol is in the current symtab
         return it->second;
     }
     else {
-        assert(false);
-        return 0;
+        // symbol not in the current symtab
+        if (!parent_symtab) {
+            // no parent block, which should not occur
+            assert(false);
+        }
+        else {
+            // search in parent block
+            return parent_symtab->get_sym_value(sym);
+        }
     }
-}
-
-bool sym_exists(sym_name_t sym) {
-    std::map<sym_name_t, sym_info_t>::iterator it = symtab.find(sym);
-
-    return (it != symtab.end());
 }
