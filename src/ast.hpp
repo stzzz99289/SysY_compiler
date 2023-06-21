@@ -79,6 +79,7 @@ class BaseAST {
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
         static std::string var_mode; // "load" or "store" for different LVal koopa code
         static std::shared_ptr<SymTable> current_symtab; // current block symbol table
+        static std::stringstream cout_bin;
 };
 
 // CompUnit AST
@@ -220,7 +221,6 @@ class StmtAST_ret : public BaseAST {
             std::cout << "\n}";
 
             // no more code should be generated
-            std::stringstream cout_bin;
             std::cout.rdbuf(cout_bin.rdbuf());
         }
 };

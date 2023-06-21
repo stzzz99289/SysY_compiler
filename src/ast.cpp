@@ -5,6 +5,7 @@ int BaseAST::sym_num = 0;
 std::pair<bool, int> BaseAST::proc_const(false, 0);
 std::string BaseAST::var_mode = "none";
 std::shared_ptr<SymTable> BaseAST::current_symtab = nullptr;
+std::stringstream BaseAST::cout_bin("");
 
 // definition of member functions
 std::string 
@@ -15,7 +16,7 @@ BaseAST::get_koopa_symbol() {
         proc_const.first = false;
     }
     else {
-        ele << "\%" << sym_num-1;
+        ele << "\%" << std::max(sym_num-1, 0);
     }
 
     return ele.str();
