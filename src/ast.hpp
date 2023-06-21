@@ -78,6 +78,7 @@ class BaseAST {
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
         static std::string var_mode; // "load" or "store" for different LVal koopa code
         static std::shared_ptr<SymTable> current_symtab; // current block symbol table
+        static bool returned;
 };
 
 // CompUnit AST
@@ -215,8 +216,11 @@ class StmtAST_ret : public BaseAST {
         void GenKoopa() override {
             exp_list->GenKoopa();
 
-            std::string sym_name = get_koopa_symbol();
-            std::cout << "\tret " << sym_name;
+            if (!returned) {
+                std::string sym_name = get_koopa_symbol();
+                std::cout << "\tret " << sym_name;
+                returned = true;
+            }   
         }
 };
 class StmtAST_var : public BaseAST {

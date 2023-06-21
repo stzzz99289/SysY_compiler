@@ -4,7 +4,9 @@
 int BaseAST::sym_num = 0;
 std::pair<bool, int> BaseAST::proc_const(false, 0);
 std::string BaseAST::var_mode = "none";
-std::shared_ptr<SymTable> BaseAST::current_symtab = nullptr; // current block symbol table
+std::shared_ptr<SymTable> BaseAST::current_symtab = nullptr;
+bool BaseAST::returned = false;
+
 
 // definition of member functions
 std::string 
