@@ -47,11 +47,12 @@ ConstExp      ::= Exp;
 */
 
 /*
-lv5.1 EBNF:
+lv6 EBNF:
 Stmt ::= LVal "=" Exp ";"
        | [Exp] ";"
        | Block
        | "return" [Exp] ";";
+       | "if" "(" Exp ")" Stmt ["else" Stmt]
 */
 
 // Base class for all ASTs
@@ -78,7 +79,6 @@ class BaseAST {
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
         static std::string var_mode; // "load" or "store" for different LVal koopa code
         static std::shared_ptr<SymTable> current_symtab; // current block symbol table
-        static bool returned;
 };
 
 // CompUnit AST
@@ -127,8 +127,6 @@ class FuncDefAST : public BaseAST {
             auto old_symtab = current_symtab;
             block->GenKoopa();
             current_symtab = old_symtab;
-
-            std::cout << "\n}";
         }
 };
 
@@ -216,11 +214,14 @@ class StmtAST_ret : public BaseAST {
         void GenKoopa() override {
             exp_list->GenKoopa();
 
-            if (!returned) {
-                std::string sym_name = get_koopa_symbol();
-                std::cout << "\tret " << sym_name;
-                returned = true;
-            }   
+            // ret code
+            std::string sym_name = get_koopa_symbol();
+            std::cout << "\tret " << sym_name;
+            std::cout << "\n}";
+
+            // no more code should be generated
+            std::stringstream cout_bin;
+            std::cout.rdbuf(cout_bin.rdbuf());
         }
 };
 class StmtAST_var : public BaseAST {
