@@ -28,8 +28,15 @@ FuncType      ::= "int";
 Block         ::= "{" BlockItemList "}"; 
 BlockItemList ::= | BlockItemList BlockItem
 BlockItem     ::= Decl | Stmt;
-Stmt          ::= LVal "=" Exp ";"
-                | "return" Exp ";";
+Stmt          ::= MatchedStmt
+                  | UnmatchedStmt
+MatchedStmt   ::= LVal "=" Exp ";"
+                  | [Exp] ";"
+                  | Block
+                  | "return" [Exp] ";"
+                  | "if" "(" Exp ")" MatchedStmt "else" MatchedStmt
+UnmatchedStmt ::= "if" "(" Exp ")" Stmt
+                  | "if" "(" Exp ")" MatchedStmt "else" UnmatchedStmt
 
 Exp           ::= LOrExp;
 LVal          ::= IDENT;
@@ -44,15 +51,6 @@ EqExp         ::= RelExp | EqExp ("==" | "!=") RelExp;
 LAndExp       ::= EqExp | LAndExp "&&" EqExp;
 LOrExp        ::= LAndExp | LOrExp "||" LAndExp;
 ConstExp      ::= Exp;
-*/
-
-/*
-lv6 EBNF:
-Stmt ::= LVal "=" Exp ";"
-       | [Exp] ";"
-       | Block
-       | "return" [Exp] ";";
-       | "if" "(" Exp ")" Stmt ["else" Stmt]
 */
 
 // Base class for all ASTs
@@ -72,6 +70,7 @@ class BaseAST {
         // member methods
         std::string get_koopa_symbol();
         void new_koopa_symbol();
+        std::string new_koopa_block(std::string block_type);
         void update_current_symtab(sym_name_t sym, sym_info_t info);
 
         // static memeber variables
@@ -121,13 +120,16 @@ class FuncDefAST : public BaseAST {
             auto sym_table = std::make_shared<SymTable>();
             current_symtab = sym_table;
 
-            // only one basic block (%entry) before lv6
+            // first block is entry block
             std::cout << " {\n";
             std::cout << "\%entry:\n";
 
             auto old_symtab = current_symtab;
             block->GenKoopa();
             current_symtab = old_symtab;
+
+            std::cout << "\tret 0\n";
+            std::cout << "}";
         }
 };
 
@@ -204,7 +206,7 @@ class BlockItemAST : public BaseAST {
 };
 
 // Stmt AST
-class StmtAST_ret : public BaseAST {
+class MatchedStmtAST_ret : public BaseAST {
     public:
         std::unique_ptr<BaseAST> exp_list;
 
@@ -217,14 +219,17 @@ class StmtAST_ret : public BaseAST {
 
             // ret code
             std::string sym_name = get_koopa_symbol();
-            std::cout << "\tret " << sym_name;
-            std::cout << "\n}";
+            std::cout << "\tret " << sym_name << "\n";
 
             // no more code should be generated
-            std::cout.rdbuf(cout_bin.rdbuf());
+            // std::cout.rdbuf(cout_bin.rdbuf());
+
+            // add a unreachable basic block
+            std::string unreached_bn = new_koopa_block("unreached");
+            std::cout << "\n" << unreached_bn << ":\n";
         }
 };
-class StmtAST_var : public BaseAST {
+class MatchedStmtAST_var : public BaseAST {
     public:
         std::unique_ptr<BaseAST> l_val;
         std::unique_ptr<BaseAST> exp;
@@ -241,7 +246,7 @@ class StmtAST_var : public BaseAST {
             var_mode = "none";
         }
 };
-class StmtAST_blk : public BaseAST {
+class MatchedStmtAST_blk : public BaseAST {
     public:
         std::unique_ptr<BaseAST> block;
     
@@ -263,7 +268,7 @@ class StmtAST_blk : public BaseAST {
             current_symtab = old_symtab;
         }
 };
-class StmtAST_lst : public BaseAST {
+class MatchedStmtAST_lst : public BaseAST {
     public:
         std::unique_ptr<BaseAST> exp_list;
     
@@ -273,6 +278,117 @@ class StmtAST_lst : public BaseAST {
 
         void GenKoopa() override {
             exp_list->GenKoopa();
+        }
+};
+class MatchedStmtAST_ifelse : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> matched_stmt_if;
+        std::unique_ptr<BaseAST> matched_stmt_else;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // calculate if exp
+            exp->GenKoopa();
+            std::string then_bn = new_koopa_block("then");
+            std::string else_bn = new_koopa_block("else");
+            std::string end_bn = new_koopa_block("end");
+
+            // br
+            std::cout << "\tbr " << get_koopa_symbol();
+            std::cout << ", " << then_bn << ", " << else_bn << "\n";
+
+            // then block
+            std::cout << "\n" << then_bn << ":\n";
+            matched_stmt_if->GenKoopa();
+            std::cout << "\tjump " << end_bn << "\n";
+
+            // else block
+            std::cout << "\n" << else_bn << ":\n";
+            matched_stmt_else->GenKoopa();
+            std::cout << "\tjump " << end_bn << "\n";
+
+            // end block
+            std::cout << "\n" << end_bn << ":\n";
+        }
+};
+
+class UnmatchedStmtAST_if : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> stmt;
+
+        void Dump() const override {
+        } 
+
+        void GenKoopa() override {
+            // calculate if exp
+            exp->GenKoopa();
+            std::string then_bn = new_koopa_block("then");
+            std::string end_bn = new_koopa_block("end");
+
+            // br
+            std::cout << "\tbr " << get_koopa_symbol();
+            std::cout << ", " << then_bn << ", " << end_bn << "\n";
+
+            // then block
+            std::cout << "\n" << then_bn << ":\n";
+            stmt->GenKoopa();
+            std::cout << "\tjump " << end_bn << "\n";
+
+            // end block
+            std::cout << "\n" << end_bn << ":\n";
+        }
+};
+class UnmatchedStmtAST_ifelse : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> matched_stmt;
+        std::unique_ptr<BaseAST> unmatched_stmt;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // calculate if exp
+            exp->GenKoopa();
+            std::string then_bn = new_koopa_block("then");
+            std::string else_bn = new_koopa_block("else");
+            std::string end_bn = new_koopa_block("end");
+
+            // br
+            std::cout << "\tbr " << get_koopa_symbol();
+            std::cout << ", " << then_bn << ", " << else_bn << "\n";
+
+            // then block
+            std::cout << "\n" << then_bn << ":\n";
+            matched_stmt->GenKoopa();
+            std::cout << "\tjump " << end_bn << "\n";
+
+            // else block
+            std::cout << "\n" << else_bn << ":\n";
+            unmatched_stmt->GenKoopa();
+            std::cout << "\tjump " << end_bn << "\n";
+
+            // end block
+            std::cout << "\n" << end_bn << ":\n";
+        }
+};
+
+class StmtAST : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> some_stmt;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            some_stmt->GenKoopa();
         }
 };
 

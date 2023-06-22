@@ -37,14 +37,15 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN LEQ GEQ EQ NEQ LAND LOR CONST
+%token INT RETURN LEQ GEQ EQ NEQ LAND LOR CONST IF ELSE
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
 // lv1&2
 %type <int_val> Number
-%type <ast_val> FuncDef FuncType Block Stmt
+%type <ast_val> FuncDef FuncType Block 
+%type <ast_val> Stmt
 
 // lv3
 %type <ast_val> ExpList Exp PrimaryExp UnaryExp UnaryOp 
@@ -57,6 +58,9 @@ using namespace std;
 %type <ast_val> BlockItem BlockItemList
 %type <ast_val> LVal
 %type <ast_val> Decl
+
+// lv6
+%type <ast_val> MatchedStmt UnmatchedStmt
 
 %%
 
@@ -122,26 +126,60 @@ BlockItem
   }
   ;
 
-Stmt
+MatchedStmt
   : RETURN ExpList ';' {
-    auto ast = new StmtAST_ret();
+    auto ast = new MatchedStmtAST_ret();
     ast->exp_list = unique_ptr<BaseAST>($2);
     $$ = ast;
   }
   | LVal '=' Exp ';' {
-    auto ast = new StmtAST_var();
+    auto ast = new MatchedStmtAST_var();
     ast->l_val = unique_ptr<BaseAST>($1);
     ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   | Block {
-    auto ast = new StmtAST_blk();
+    auto ast = new MatchedStmtAST_blk();
     ast->block = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   | ExpList ';' {
-    auto ast = new StmtAST_lst();
+    auto ast = new MatchedStmtAST_lst();
     ast->exp_list = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | IF '(' Exp ')' MatchedStmt ELSE MatchedStmt {
+    auto ast = new MatchedStmtAST_ifelse();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->matched_stmt_if = unique_ptr<BaseAST>($5);
+    ast->matched_stmt_else = unique_ptr<BaseAST>($7);
+    $$ = ast;
+  }
+  ;
+UnmatchedStmt
+  : IF '(' Exp ')' Stmt {
+    auto ast = new UnmatchedStmtAST_if();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->stmt = unique_ptr<BaseAST>($5);
+    $$ = ast;
+  }
+  | IF '(' Exp ')' MatchedStmt ELSE UnmatchedStmt {
+    auto ast = new UnmatchedStmtAST_ifelse();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->matched_stmt = unique_ptr<BaseAST>($5);
+    ast->unmatched_stmt = unique_ptr<BaseAST>($7);
+    $$ = ast;
+  }
+  ;
+Stmt
+  : MatchedStmt {
+    auto ast = new StmtAST();
+    ast->some_stmt = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | UnmatchedStmt {
+    auto ast = new StmtAST();
+    ast->some_stmt = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;

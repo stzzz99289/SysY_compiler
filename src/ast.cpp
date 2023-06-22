@@ -28,6 +28,26 @@ BaseAST::new_koopa_symbol() {
     sym_num = sym_num + 1;
 }
 
+std::string
+BaseAST::new_koopa_block(std::string block_type) {
+    // block types: {%then, %else, %end, %unreachable}
+    static int then_n = 0;
+    static int else_n = 0;
+    static int end_n = 0;
+    static int unreached_n = 0;
+
+    if (block_type == "then")
+        return "\%" + block_type + std::to_string(then_n++);
+    else if (block_type == "else")
+        return "\%" + block_type + std::to_string(else_n++);
+    else if (block_type == "end")
+        return "\%" + block_type + std::to_string(end_n++);
+    else if (block_type == "unreached")
+        return "\%" + block_type + std::to_string(unreached_n++);
+    else
+        return "\%wrong_block_type";
+}
+
 void
 BaseAST::update_current_symtab(sym_name_t sym, sym_info_t info) {
     current_symtab->symtab[sym] = info;
