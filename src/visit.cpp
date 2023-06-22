@@ -92,6 +92,12 @@ void Visit(const koopa_raw_function_t &func) {
 
 // visit basic blocks
 void Visit(const koopa_raw_basic_block_t &bb) {
+  if (visit_mode == "riscv") {
+    std::string bbname = ((bb->name)+1);
+    if (bbname != "entry") {
+      std::cout << "\n" << (bb->name)+1 << ":\n";
+    }
+  }
   Visit(bb->insts);
 }
 
@@ -127,6 +133,12 @@ void Visit(const koopa_raw_value_t &value) {
         used_tempreg_count = used_tempreg_count - 1;
         break;
       case KOOPA_RVT_ALLOC:
+        break;
+      case KOOPA_RVT_BRANCH:
+        Visit(kind.data.branch);
+        break;
+      case KOOPA_RVT_JUMP:
+        Visit(kind.data.jump);
         break;
       default:
         std::cout << "[unexpected value kind: " << kind.tag << " at visit mode: " << visit_mode << "]\n";
@@ -261,6 +273,35 @@ void Visit(const koopa_raw_load_t &load) {
     
     // load value to a new tempreg
     load_value(src);
+  }
+}
+
+// branch
+void Visit(const koopa_raw_branch_t &branch) {
+  const auto &cond = branch.cond;
+  const auto &true_bb = branch.true_bb;
+  const auto &false_bb = branch.false_bb;
+
+  if (visit_mode == "riscv") {
+    // load cond value from stack to tempreg and release the tempreg
+    load_value(cond);
+    used_tempreg_count = used_tempreg_count - 1;
+
+    // branch = bnez + j
+    std::cout << "\tbnez ";
+    riscv_by_koopa(cond);
+    std::cout << ", " << (true_bb->name)+1 << "\n";
+    std::cout << "\tj " << (false_bb->name)+1 << "\n";
+  }
+}
+
+// jump
+void Visit(const koopa_raw_jump_t &jump) {
+  const auto &target = jump.target;
+
+  if (visit_mode == "riscv") {
+    // jump = j
+    std::cout << "\tj " << (target->name)+1 << "\n";
   }
 }
 
@@ -418,7 +459,7 @@ int offset_by_koopa(const koopa_raw_value_t &value) {
 }
 
 void generate_bin_riscv(std::string riscv, const koopa_raw_value_t &lhs, const koopa_raw_value_t &rhs) {
-  // constant needs to be loaded to tempreg
+  // constant/variables needs to be loaded to tempreg
   load_value(lhs);
   load_value(rhs);
 
