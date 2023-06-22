@@ -34,6 +34,7 @@ MatchedStmt   ::= LVal "=" Exp ";"
                   | [Exp] ";"
                   | Block
                   | "return" [Exp] ";"
+                  | "while" "(" Exp ")" MatchedStmt
                   | "if" "(" Exp ")" MatchedStmt "else" MatchedStmt
 UnmatchedStmt ::= "if" "(" Exp ")" Stmt
                   | "if" "(" Exp ")" MatchedStmt "else" UnmatchedStmt
@@ -75,10 +76,13 @@ class BaseAST {
 
         // static memeber variables
         static int sym_num; // next koopa symbol number
+        // static bool sym_type; // next koopa symbol name type
         static std::pair<bool, int> proc_const; // bool: processing const or not; int: const value
         static std::string var_mode; // "load" or "store" for different LVal koopa code
         static std::shared_ptr<SymTable> current_symtab; // current block symbol table
-        static std::stringstream cout_bin;
+        static std::vector<int> wentry_bn_stack; // stack of all while entry name index
+        static std::vector<int> wend_bn_stack; // stack of all while end name index
+        // static std::stringstream cout_bin;
 };
 
 // CompUnit AST
@@ -293,6 +297,8 @@ class MatchedStmtAST_ifelse : public BaseAST {
         void GenKoopa() override {
             // calculate if exp
             exp->GenKoopa();
+
+            // assign block names
             std::string then_bn = new_koopa_block("then");
             std::string else_bn = new_koopa_block("else");
             std::string end_bn = new_koopa_block("end");
@@ -315,6 +321,81 @@ class MatchedStmtAST_ifelse : public BaseAST {
             std::cout << "\n" << end_bn << ":\n";
         }
 };
+class MatchedStmtAST_while : public BaseAST {
+    public:
+        std::unique_ptr<BaseAST> exp;
+        std::unique_ptr<BaseAST> matched_stmt;
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // assign block names
+            std::string wentry_bn = new_koopa_block("while_entry");
+            std::string wbody_bn = new_koopa_block("while_body");
+            std::string wend_bn = new_koopa_block("while_end");
+
+            // jump to while entry
+            std::cout << "\tjump " << wentry_bn << "\n";
+
+            // while entry block
+            std::cout << "\n" << wentry_bn << ":\n";
+            exp->GenKoopa();
+            std::cout << "\tbr " << get_koopa_symbol();
+            std::cout << ", " << wbody_bn << ", " << wend_bn << "\n";
+
+            // while body block
+            std::cout << "\n" << wbody_bn << ":\n";
+            matched_stmt->GenKoopa();
+            std::cout << "\tjump " << wentry_bn << "\n";
+
+            // end block
+            std::cout << "\n" << wend_bn << ":\n";
+
+            // pop stack info
+            wentry_bn_stack.pop_back();
+            wend_bn_stack.pop_back();
+        }
+};
+class MatchedStmtAST_break : public BaseAST {
+    public:
+
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // get current while end block name
+            std::string curr_end_bn = "\%while_end" + std::to_string(wend_bn_stack.back());
+
+            // jump to current end
+            std::cout << "\tjump " << curr_end_bn << "\n";
+
+            // add a unreachable basic block
+            std::string unreached_bn = new_koopa_block("unreached");
+            std::cout << "\n" << unreached_bn << ":\n";
+        }
+};
+class MatchedStmtAST_continue : public BaseAST {
+    public:
+    
+        void Dump() const override {
+
+        } 
+
+        void GenKoopa() override {
+            // get current while end block name
+            std::string curr_wentry_bn = "\%while_entry" + std::to_string(wentry_bn_stack.back());
+
+            // jump to current entry
+            std::cout << "\tjump " << curr_wentry_bn << "\n";
+
+            // add a unreachable basic block
+            std::string unreached_bn = new_koopa_block("unreached");
+            std::cout << "\n" << unreached_bn << ":\n";
+        }
+};
 
 class UnmatchedStmtAST_if : public BaseAST {
     public:
@@ -327,6 +408,8 @@ class UnmatchedStmtAST_if : public BaseAST {
         void GenKoopa() override {
             // calculate if exp
             exp->GenKoopa();
+
+            // assign block names
             std::string then_bn = new_koopa_block("then");
             std::string end_bn = new_koopa_block("end");
 
@@ -356,6 +439,8 @@ class UnmatchedStmtAST_ifelse : public BaseAST {
         void GenKoopa() override {
             // calculate if exp
             exp->GenKoopa();
+
+            // assign block names
             std::string then_bn = new_koopa_block("then");
             std::string else_bn = new_koopa_block("else");
             std::string end_bn = new_koopa_block("end");

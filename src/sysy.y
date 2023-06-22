@@ -37,7 +37,7 @@ using namespace std;
 
 // lexer 返回的所有 token 种类的声明
 // 注意 IDENT 和 INT_CONST 会返回 token 的值, 分别对应 str_val 和 int_val
-%token INT RETURN LEQ GEQ EQ NEQ LAND LOR CONST IF ELSE
+%token INT RETURN LEQ GEQ EQ NEQ LAND LOR CONST IF ELSE WHILE BREAK CONTINUE
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
@@ -59,7 +59,7 @@ using namespace std;
 %type <ast_val> LVal
 %type <ast_val> Decl
 
-// lv6
+// lv 5,6,7
 %type <ast_val> MatchedStmt UnmatchedStmt
 
 %%
@@ -153,6 +153,20 @@ MatchedStmt
     ast->exp = unique_ptr<BaseAST>($3);
     ast->matched_stmt_if = unique_ptr<BaseAST>($5);
     ast->matched_stmt_else = unique_ptr<BaseAST>($7);
+    $$ = ast;
+  }
+  | WHILE '(' Exp ')' MatchedStmt {
+    auto ast = new MatchedStmtAST_while();
+    ast->exp = unique_ptr<BaseAST>($3);
+    ast->matched_stmt = unique_ptr<BaseAST>($5);
+    $$ = ast;
+  }
+  | BREAK ';' {
+    auto ast = new MatchedStmtAST_break();
+    $$ = ast;
+  }
+  | CONTINUE ';' {
+    auto ast = new MatchedStmtAST_continue();
     $$ = ast;
   }
   ;
