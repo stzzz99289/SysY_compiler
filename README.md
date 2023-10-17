@@ -1,7 +1,9 @@
 # SysY compiler
 
 SysY -> Koopa IR -> RISC-V compiler.
+
 Tianze Shi, School of Computer Science, Peking University.
+
 reference: https://pku-minic.github.io/online-doc/#/preface/lab
 
 ## Basic functionalities
